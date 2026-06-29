@@ -1,0 +1,41 @@
+# Build artifacts
+/dist
+/build
+/.vite
+/.next/
+/node_modules
+
+# Agent / tooling noise
+/.agent/
+/agents/
+/tmp/
+/cache/
+/debug/
+/logs/
+/runs/
+/experiments/
+/sandbox/
+
+# Kernel experiment outputs
+*.npy
+*.json
+*.csv
+/results/
+/outputs/
+/data/generated/
+/data/cache/
+
+# CUDA / future GPU artifacts
+*.ptx
+*.cubin
+*.so
+*.dll
+*.dylib
+
+# Python (future-proofing)
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+Thumbs.db
