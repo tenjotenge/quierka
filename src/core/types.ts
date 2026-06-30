@@ -34,3 +34,14 @@ export interface KernelComputationResult {
   metrics: KernelMetrics;
   analysis?: AnalysisResult;
 }
+
+export interface Selection {
+  datasetIndex: number;
+  sourceView: "dataset" | "geometry" | "heatmap";
+}
+
+export interface AnalysisSelection {
+  selectedIndex: number;
+  similarities: number[];
+  neighbors: number[];
+}
