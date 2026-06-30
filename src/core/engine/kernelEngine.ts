@@ -1,19 +1,20 @@
-import { Dataset, KernelComputationResult } from '../types';
+import { Dataset, KernelComputationResult, AnalysisResult } from '../types';
 import { kernelRegistry } from '../kernels/registry';
 import { computeSpectralProperties } from '../analysis/spectral';
+import { computeKernelPCA } from '../analysis/geometry';
 
 class KernelEngine {
   private cache: Map<string, KernelComputationResult> = new Map();
 
-  private generateHash(dataset: Dataset, kernelName: string, withSpectrum: boolean): string {
-    return JSON.stringify({ X: dataset.X, kernelName, withSpectrum });
+  private generateHash(dataset: Dataset, kernelName: string, withAnalysis: boolean): string {
+    return JSON.stringify({ X: dataset.X, kernelName, withAnalysis });
   }
 
-  computeBatchMatrix(dataset: Dataset, kernelName: string, withSpectrum: boolean = false): KernelComputationResult {
-    const hash = this.generateHash(dataset, kernelName, withSpectrum);
+  computeBatchMatrix(dataset: Dataset, kernelName: string, withAnalysis: boolean = false): KernelComputationResult {
+    const hash = this.generateHash(dataset, kernelName, withAnalysis);
     
     if (this.cache.has(hash)) {
-      console.log(`[KernelEngine] Cache hit for kernel: ${kernelName}, dataset size: ${dataset.X.length}, spectrum: ${withSpectrum}`);
+      console.log(`[KernelEngine] Cache hit for kernel: ${kernelName}, dataset size: ${dataset.X.length}, analysis: ${withAnalysis}`);
       return this.cache.get(hash)!;
     }
 
@@ -47,13 +48,22 @@ class KernelEngine {
       }
     };
 
-    if (withSpectrum) {
+    if (withAnalysis) {
       const spectralProps = computeSpectralProperties(K);
-      result.spectrum = spectralProps.spectrum;
-      result.stats = {
-        effectiveRank: spectralProps.effectiveRank,
-        entropy: spectralProps.entropy
+      const embedding = computeKernelPCA(K, 2);
+      
+      const analysis: AnalysisResult = {
+        spectrum: spectralProps.spectrum,
+        embedding: embedding,
+        statistics: {
+          effectiveRank: spectralProps.effectiveRank,
+          entropy: spectralProps.entropy,
+          leadingEigenvaluePercentage: spectralProps.leadingEigenvaluePercentage
+        },
+        interpretation: spectralProps.interpretation
       };
+      
+      result.analysis = analysis;
     }
 
     this.cache.set(hash, result);

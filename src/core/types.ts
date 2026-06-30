@@ -18,12 +18,19 @@ export interface KernelMetrics {
   memoryEstimateBytes: number;
 }
 
+export interface AnalysisResult {
+  spectrum: number[];
+  embedding: number[][];
+  statistics: {
+    effectiveRank: number;
+    entropy: number;
+    leadingEigenvaluePercentage: number;
+  };
+  interpretation: string;
+}
+
 export interface KernelComputationResult {
   matrix: number[][];
   metrics: KernelMetrics;
-  spectrum?: number[];
-  stats?: {
-    effectiveRank: number;
-    entropy: number;
-  };
+  analysis?: AnalysisResult;
 }

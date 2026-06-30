@@ -4,6 +4,7 @@ import { Controls } from './components/Controls';
 import { ScatterPlot } from './components/ScatterPlot';
 import { Heatmap } from './components/Heatmap';
 import { SpectrumView } from './components/SpectrumView';
+import { GeometryView } from './components/GeometryView';
 
 import { makeMoons, makeCircles, makeBlobs, makeSpiral } from '../core/datasets';
 import { kernelEngine } from '../core/engine/kernelEngine';
@@ -11,7 +12,7 @@ import { kernelEngine } from '../core/engine/kernelEngine';
 export default function App() {
   const [datasetName, setDatasetName] = useState('moons');
   const [kernelName, setKernelName] = useState('rbf');
-  const [showSpectrum, setShowSpectrum] = useState(false);
+  const [showAnalysis, setShowAnalysis] = useState(false);
 
   // Generate dataset based on selection
   const dataset = useMemo(() => {
@@ -36,12 +37,12 @@ export default function App() {
     };
   }, [dataset]);
 
-  // Compute kernel matrix via the Engine (now with optional spectrum)
+  // Compute kernel matrix via the Engine (now with optional analysis)
   const computationResult = useMemo(() => {
-    return kernelEngine.computeBatchMatrix(sortedDataset, kernelName, showSpectrum);
-  }, [sortedDataset, kernelName, showSpectrum]);
+    return kernelEngine.computeBatchMatrix(sortedDataset, kernelName, showAnalysis);
+  }, [sortedDataset, kernelName, showAnalysis]);
 
-  const { matrix: kernelMatrix, metrics, spectrum, stats } = computationResult;
+  const { matrix: kernelMatrix, metrics, analysis } = computationResult;
 
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
@@ -63,11 +64,11 @@ export default function App() {
           <label style={{ fontSize: '1.1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <input 
               type="checkbox" 
-              checked={showSpectrum} 
-              onChange={(e) => setShowSpectrum(e.target.checked)} 
+              checked={showAnalysis} 
+              onChange={(e) => setShowAnalysis(e.target.checked)} 
               style={{ transform: 'scale(1.5)' }}
             />
-            <strong>Show Spectrum View</strong>
+            <strong>Enable Kernel Analysis Layer</strong>
           </label>
         </div>
       </div>
@@ -81,28 +82,18 @@ export default function App() {
             <li>Memory Estimate: {(metrics.memoryEstimateBytes / 1024).toFixed(2)} KB</li>
           </ul>
         </div>
-        {stats && (
-          <div>
-            <strong>Spectral Stats:</strong>
-            <ul style={{ margin: '5px 0 0', paddingLeft: '20px' }}>
-              <li>Effective Rank: {stats.effectiveRank.toFixed(2)}</li>
-              <li>Entropy: {stats.entropy.toFixed(3)} nats</li>
-            </ul>
-          </div>
-        )}
       </div>
 
-      <div style={{ display: 'flex', gap: '40px', marginTop: '40px', flexWrap: 'wrap', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', gap: '40px', marginTop: '40px', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'flex-start' }}>
+        <GeometryView originalDatasetX={sortedDataset.X} datasetY={sortedDataset.y} analysis={analysis} />
+        
         <div>
-          <h2 style={{ fontSize: '1.2rem', textAlign: 'center' }}>Dataset View</h2>
-          <ScatterPlot dataset={sortedDataset} />
-        </div>
-        <div>
-          <h2 style={{ fontSize: '1.2rem', textAlign: 'center' }}>Kernel Matrix</h2>
+          <h2 style={{ fontSize: '1.2rem', textAlign: 'center' }}>Kernel Matrix Heatmap</h2>
           <Heatmap kernelMatrix={kernelMatrix} />
         </div>
-        {showSpectrum && spectrum && (
-          <SpectrumView spectrum={spectrum} />
+        
+        {showAnalysis && analysis && (
+          <SpectrumView spectrum={analysis.spectrum} />
         )}
       </div>
     </div>
