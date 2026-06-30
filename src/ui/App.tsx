@@ -3,14 +3,15 @@ import React, { useState, useMemo } from 'react';
 import { Controls } from './components/Controls';
 import { ScatterPlot } from './components/ScatterPlot';
 import { Heatmap } from './components/Heatmap';
+import { SpectrumView } from './components/SpectrumView';
 
-import { Dataset } from '../core/types';
 import { makeMoons, makeCircles, makeBlobs, makeSpiral } from '../core/datasets';
-import { linearKernel, getPolynomialKernel, getRBFKernel, quantumZZKernel, computeKernelMatrix } from '../core/kernels';
+import { kernelEngine } from '../core/engine/kernelEngine';
 
 export default function App() {
   const [datasetName, setDatasetName] = useState('moons');
   const [kernelName, setKernelName] = useState('rbf');
+  const [showSpectrum, setShowSpectrum] = useState(false);
 
   // Generate dataset based on selection
   const dataset = useMemo(() => {
@@ -35,36 +36,61 @@ export default function App() {
     };
   }, [dataset]);
 
-  // Select kernel function
-  const kernelFunc = useMemo(() => {
-    switch (kernelName) {
-      case 'linear': return linearKernel;
-      case 'polynomial': return getPolynomialKernel(3, 1, 1);
-      case 'quantum': return quantumZZKernel;
-      case 'rbf':
-      default:
-        return getRBFKernel(1.0);
-    }
-  }, [kernelName]);
+  // Compute kernel matrix via the Engine (now with optional spectrum)
+  const computationResult = useMemo(() => {
+    return kernelEngine.computeBatchMatrix(sortedDataset, kernelName, showSpectrum);
+  }, [sortedDataset, kernelName, showSpectrum]);
 
-  // Compute kernel matrix
-  const kernelMatrix = useMemo(() => {
-    return computeKernelMatrix(sortedDataset.X, kernelFunc);
-  }, [sortedDataset, kernelFunc]);
+  const { matrix: kernelMatrix, metrics, spectrum, stats } = computationResult;
 
   return (
-    <div style={{ fontFamily: 'system-ui, sans-serif', padding: '40px', maxWidth: '1000px', margin: '0 auto' }}>
+    <div style={{ fontFamily: 'system-ui, sans-serif', padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
       <h1 style={{ borderBottom: '2px solid #eaeaea', paddingBottom: '10px' }}>Quierka Dashboard</h1>
       <p style={{ color: '#666', marginBottom: '30px' }}>
         Kernel Visualization and Analysis Environment
       </p>
 
-      <Controls 
-        selectedDataset={datasetName}
-        selectedKernel={kernelName}
-        onDatasetChange={setDatasetName}
-        onKernelChange={setKernelName}
-      />
+      <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '20px' }}>
+        <div style={{ flex: 1 }}>
+          <Controls 
+            selectedDataset={datasetName}
+            selectedKernel={kernelName}
+            onDatasetChange={setDatasetName}
+            onKernelChange={setKernelName}
+          />
+        </div>
+        <div style={{ padding: '20px', background: '#f5f5f5', borderRadius: '8px', height: '100%', display: 'flex', alignItems: 'center' }}>
+          <label style={{ fontSize: '1.1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <input 
+              type="checkbox" 
+              checked={showSpectrum} 
+              onChange={(e) => setShowSpectrum(e.target.checked)} 
+              style={{ transform: 'scale(1.5)' }}
+            />
+            <strong>Show Spectrum View</strong>
+          </label>
+        </div>
+      </div>
+
+      <div style={{ marginTop: '20px', padding: '15px', background: '#eef6fc', borderRadius: '8px', fontSize: '0.9rem', display: 'flex', justifyContent: 'space-between' }}>
+        <div>
+          <strong>Computation Metrics:</strong>
+          <ul style={{ margin: '5px 0 0', paddingLeft: '20px' }}>
+            <li>Time: {metrics.timeMs.toFixed(2)} ms</li>
+            <li>Dataset Size: {metrics.datasetSize} points</li>
+            <li>Memory Estimate: {(metrics.memoryEstimateBytes / 1024).toFixed(2)} KB</li>
+          </ul>
+        </div>
+        {stats && (
+          <div>
+            <strong>Spectral Stats:</strong>
+            <ul style={{ margin: '5px 0 0', paddingLeft: '20px' }}>
+              <li>Effective Rank: {stats.effectiveRank.toFixed(2)}</li>
+              <li>Entropy: {stats.entropy.toFixed(3)} nats</li>
+            </ul>
+          </div>
+        )}
+      </div>
 
       <div style={{ display: 'flex', gap: '40px', marginTop: '40px', flexWrap: 'wrap', justifyContent: 'center' }}>
         <div>
@@ -75,6 +101,9 @@ export default function App() {
           <h2 style={{ fontSize: '1.2rem', textAlign: 'center' }}>Kernel Matrix</h2>
           <Heatmap kernelMatrix={kernelMatrix} />
         </div>
+        {showSpectrum && spectrum && (
+          <SpectrumView spectrum={spectrum} />
+        )}
       </div>
     </div>
   );

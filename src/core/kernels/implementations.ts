@@ -1,4 +1,4 @@
-import { KernelFunction } from './types';
+import { KernelFunction } from '../types';
 
 // Utility for dot product
 function dotProduct(x: number[], y: number[]): number {
@@ -25,9 +25,6 @@ export function getRBFKernel(gamma = 1): KernelFunction {
 
 // 4. Quantum-inspired ZZ feature map approximation
 export const quantumZZKernel: KernelFunction = (x, y) => {
-  // A simplified classical approximation of the ZZ feature map inner product
-  // Φ(x) -> exp(i * x_j) and exp(i * (π - x_j)(π - x_k)) etc.
-  // We approximate the fidelity |<Φ(x)|Φ(y)>|^2
   let phaseDiff = 0;
   
   // Linear terms
@@ -44,29 +41,5 @@ export const quantumZZKernel: KernelFunction = (x, y) => {
     }
   }
 
-  // Returning the fidelity |sum e^{i phase}|^2 normalized.
-  // Since it's a phase difference, fidelity is roughly cos(phaseDiff)^2 or similar.
-  // This serves as a deterministic quantum-inspired non-linear map.
   return Math.pow(Math.cos(phaseDiff), 2);
 };
-
-/**
- * Computes the NxN kernel matrix for a dataset X using the provided kernel.
- * @param X Array of samples [N, features]
- * @param kernel The kernel function to apply
- * @returns Symmetric matrix of shape [N, N]
- */
-export function computeKernelMatrix(X: number[][], kernel: KernelFunction): number[][] {
-  const n = X.length;
-  const K: number[][] = Array(n).fill(0).map(() => Array(n).fill(0));
-
-  for (let i = 0; i < n; i++) {
-    for (let j = i; j < n; j++) {
-      const val = kernel(X[i], X[j]);
-      K[i][j] = val;
-      K[j][i] = val; // Symmetric
-    }
-  }
-
-  return K;
-}
