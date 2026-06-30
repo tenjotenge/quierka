@@ -9,37 +9,28 @@ import { SimilarityPanel } from './components/SimilarityPanel';
 
 import { makeMoons, makeCircles, makeBlobs, makeSpiral } from '../core/datasets';
 import { kernelEngine } from '../core/engine/kernelEngine';
+import { runAnalysisPipeline } from '../core/analysis/pipeline';
 import { Selection, AnalysisSelection } from '../core/types';
 
-// Compute AnalysisSelection from a kernel matrix row
-function buildAnalysisSelection(kernelMatrix: number[][], index: number): AnalysisSelection {
-  const similarities = kernelMatrix[index];
-  // Sort indices by similarity descending, excluding self
-  const neighbors = Array.from({ length: similarities.length }, (_, i) => i)
-    .filter(i => i !== index)
-    .sort((a, b) => similarities[b] - similarities[a]);
-  return { selectedIndex: index, similarities, neighbors };
-}
-
 export default function App() {
+  // --- Dataset & kernel selection ---
   const [datasetName, setDatasetName] = useState('moons');
   const [kernelName, setKernelName] = useState('rbf');
   const [showAnalysis, setShowAnalysis] = useState(false);
 
-  // Interaction state
+  // --- Interaction state ---
   const [selection, setSelection] = useState<Selection | null>(null);
   const [interactionMode, setInteractionMode] = useState<'hover' | 'click'>('hover');
   const [colorBy, setColorBy] = useState<'class' | 'similarity'>('class');
   const [similarityThreshold, setSimilarityThreshold] = useState(0.5);
 
+  // --- Data generation ---
   const dataset = useMemo(() => {
     switch (datasetName) {
       case 'circles': return makeCircles(150, 0.1, 0.5);
-      case 'blobs': return makeBlobs(150, 2, 0.6);
-      case 'spiral': return makeSpiral(150, 0.1);
-      case 'moons':
-      default:
-        return makeMoons(150, 0.1);
+      case 'blobs':   return makeBlobs(150, 2, 0.6);
+      case 'spiral':  return makeSpiral(150, 0.1);
+      default:        return makeMoons(150, 0.1);
     }
   }, [datasetName]);
 
@@ -49,27 +40,26 @@ export default function App() {
     return { X: indices.map(i => dataset.X[i]), y: indices.map(i => dataset.y[i]) };
   }, [dataset]);
 
-  const computationResult = useMemo(() => {
-    return kernelEngine.computeBatchMatrix(sortedDataset, kernelName, showAnalysis);
-  }, [sortedDataset, kernelName, showAnalysis]);
+  // --- Kernel computation (matrix + optional spectral/geometry analysis) ---
+  const { matrix: kernelMatrix, metrics, analysis } = useMemo(
+    () => kernelEngine.computeBatchMatrix(sortedDataset, kernelName, showAnalysis),
+    [sortedDataset, kernelName, showAnalysis]
+  );
 
-  const { matrix: kernelMatrix, metrics, analysis } = computationResult;
-
-  // Derived AnalysisSelection — updates whenever the selection or kernel changes
-  const analysisSelection = useMemo<AnalysisSelection | null>(() => {
+  // --- Selection analysis via pipeline (runs only when a point is selected) ---
+  const selectionAnalysis = useMemo<AnalysisSelection | null>(() => {
     if (selection === null) return null;
-    return buildAnalysisSelection(kernelMatrix, selection.datasetIndex);
+    const output = runAnalysisPipeline({
+      matrix: kernelMatrix,
+      selectedIndex: selection.datasetIndex,
+    });
+    return output.selectionAnalysis ?? null;
   }, [selection, kernelMatrix]);
 
-  // Clear selection when dataset changes
+  // --- Interaction handlers ---
   const handleDatasetChange = useCallback((name: string) => {
     setDatasetName(name);
     setSelection(null);
-  }, []);
-
-  const handleKernelChange = useCallback((name: string) => {
-    setKernelName(name);
-    // Keep selection, but similarities will recalculate via useMemo
   }, []);
 
   const handlePointHover = useCallback((index: number, source: Selection['sourceView']) => {
@@ -78,9 +68,8 @@ export default function App() {
   }, [interactionMode]);
 
   const handlePointClick = useCallback((index: number, source: Selection['sourceView']) => {
-    // Click always updates selection regardless of mode
     setSelection(prev =>
-      prev?.datasetIndex === index && prev?.sourceView === source ? null : { datasetIndex: index, sourceView: source }
+      prev?.datasetIndex === index ? null : { datasetIndex: index, sourceView: source }
     );
   }, []);
 
@@ -93,14 +82,14 @@ export default function App() {
       <h1 style={{ borderBottom: '2px solid #eaeaea', paddingBottom: '10px' }}>Quierka Dashboard</h1>
       <p style={{ color: '#666', marginBottom: '20px' }}>Kernel Visualization and Analysis Environment</p>
 
-      {/* Controls row */}
-      <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', marginBottom: '16px', flexWrap: 'wrap' }}>
+      {/* ── Controls row ─────────────────────────────────────────── */}
+      <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: '200px' }}>
-          <Controls 
+          <Controls
             selectedDataset={datasetName}
             selectedKernel={kernelName}
             onDatasetChange={handleDatasetChange}
-            onKernelChange={handleKernelChange}
+            onKernelChange={setKernelName}
           />
         </div>
 
@@ -134,17 +123,11 @@ export default function App() {
             <div style={{ fontSize: '0.9rem' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <strong>Similarity Radius:</strong>
-                <input
-                  type="range" min={0} max={1} step={0.01}
-                  value={similarityThreshold}
-                  onChange={e => setSimilarityThreshold(Number(e.target.value))}
-                  style={{ width: '120px' }}
-                />
+                <input type="range" min={0} max={1} step={0.01} value={similarityThreshold}
+                  onChange={e => setSimilarityThreshold(Number(e.target.value))} style={{ width: '120px' }} />
                 <span>{similarityThreshold.toFixed(2)}</span>
               </label>
-              <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#777' }}>
-                Points below threshold will fade out.
-              </p>
+              <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#777' }}>Points below threshold will fade out.</p>
             </div>
           )}
         </div>
@@ -161,10 +144,8 @@ export default function App() {
             <div style={{ marginTop: '8px' }}>
               <strong>Selected:</strong> #{selection.datasetIndex}
               <span style={{ color: '#888', marginLeft: '8px' }}>via {selection.sourceView}</span>
-              <button 
-                onClick={() => setSelection(null)}
-                style={{ marginLeft: '8px', fontSize: '0.75rem', padding: '2px 6px', cursor: 'pointer' }}
-              >
+              <button onClick={() => setSelection(null)}
+                style={{ marginLeft: '8px', fontSize: '0.75rem', padding: '2px 6px', cursor: 'pointer' }}>
                 Clear
               </button>
             </div>
@@ -172,12 +153,12 @@ export default function App() {
         </div>
       </div>
 
-      {/* Main visualization row */}
+      {/* ── Visualizations row ───────────────────────────────────── */}
       <div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'flex-start' }}>
         <ScatterPlot
           dataset={sortedDataset}
           selection={selection}
-          analysisSelection={analysisSelection}
+          analysisSelection={selectionAnalysis}
           colorBy={colorBy}
           similarityThreshold={similarityThreshold}
           onPointHover={(i) => handlePointHover(i, 'dataset')}
@@ -189,7 +170,7 @@ export default function App() {
           datasetY={sortedDataset.y}
           analysis={analysis}
           selection={selection}
-          analysisSelection={analysisSelection}
+          analysisSelection={selectionAnalysis}
           colorBy={colorBy}
           similarityThreshold={similarityThreshold}
           onPointHover={(i) => handlePointHover(i, 'geometry')}
@@ -206,12 +187,9 @@ export default function App() {
         )}
       </div>
 
-      {/* Similarity Panel — shown below when a point is selected */}
-      {analysisSelection && (
-        <SimilarityPanel
-          analysisSelection={analysisSelection}
-          onNeighborClick={handleNeighborClick}
-        />
+      {/* ── Similarity Panel ─────────────────────────────────────── */}
+      {selectionAnalysis && (
+        <SimilarityPanel analysisSelection={selectionAnalysis} onNeighborClick={handleNeighborClick} />
       )}
     </div>
   );
