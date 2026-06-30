@@ -18,6 +18,13 @@ export interface KernelMetrics {
   memoryEstimateBytes: number;
 }
 
+export interface SensitivityMetrics {
+  stabilityScore: number;
+  meanChange: number;
+  variance: number;
+  perPointSensitivity: number[];
+}
+
 export interface AnalysisResult {
   spectrum: number[];
   embedding: number[][];
@@ -27,6 +34,7 @@ export interface AnalysisResult {
     leadingEigenvaluePercentage: number;
   };
   interpretation: string;
+  sensitivity?: SensitivityMetrics;
 }
 
 export interface KernelComputationResult {

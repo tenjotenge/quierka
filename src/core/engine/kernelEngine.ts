@@ -60,7 +60,11 @@ class KernelEngine {
     };
 
     if (withAnalysis) {
-      const pipelineOutput = runAnalysisPipeline({ matrix: K });
+      const pipelineOutput = runAnalysisPipeline({
+        matrix: K,
+        datasetX: dataset.X,
+        kernelFunc,
+      });
       result.analysis = pipelineOutput.analysis;
     }
 

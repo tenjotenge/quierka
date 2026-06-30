@@ -6,6 +6,7 @@ import { Heatmap } from './components/Heatmap';
 import { SpectrumView } from './components/SpectrumView';
 import { GeometryView } from './components/GeometryView';
 import { SimilarityPanel } from './components/SimilarityPanel';
+import { SensitivityView } from './components/SensitivityView';
 
 import { makeMoons, makeCircles, makeBlobs, makeSpiral } from '../core/datasets';
 import { kernelEngine } from '../core/engine/kernelEngine';
@@ -184,6 +185,10 @@ export default function App() {
 
         {showAnalysis && analysis && (
           <SpectrumView spectrum={analysis.spectrum} />
+        )}
+
+        {showAnalysis && analysis?.sensitivity && (
+          <SensitivityView sensitivity={analysis.sensitivity} />
         )}
       </div>
 

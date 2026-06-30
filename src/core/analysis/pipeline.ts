@@ -1,6 +1,7 @@
-import { AnalysisResult, AnalysisSelection } from '../types';
+import { AnalysisResult, AnalysisSelection, KernelFunction } from '../types';
 import { computeSpectralProperties } from './spectral';
 import { computeKernelPCA } from './geometry';
+import { computeSensitivity } from './sensitivity';
 
 // ---------------------------------------------------------------------------
 // Pipeline input/output types
@@ -11,6 +12,18 @@ export interface KernelPipelineInput {
   matrix: number[][];
   /** Optional index of the point the user has selected. */
   selectedIndex?: number;
+  /**
+   * Raw dataset points. Required by sensitivity module.
+   * Other modules ignore this field.
+   */
+  datasetX?: number[][];
+  /**
+   * Kernel function used to compute the matrix.
+   * Required by sensitivity module for perturbation re-evaluation.
+   */
+  kernelFunc?: KernelFunction;
+  /** Gaussian perturbation magnitude passed to sensitivity module. Default 0.1. */
+  perturbationEpsilon?: number;
 }
 
 export interface KernelPipelineOutput {
@@ -72,6 +85,20 @@ const geometryModule: AnalysisModule = {
 };
 
 /**
+ * SensitivityModule — measures kernel stability under Gaussian perturbation.
+ * Requires input.datasetX and input.kernelFunc to be present.
+ * Skips silently if they are absent (e.g. when called with matrix-only input).
+ */
+const sensitivityModule: AnalysisModule = {
+  name: 'sensitivity',
+  run(input, output) {
+    if (!output.analysis || !input.datasetX || !input.kernelFunc) return;
+    const epsilon = input.perturbationEpsilon ?? 0.1;
+    output.analysis.sensitivity = computeSensitivity(input.datasetX, input.kernelFunc, epsilon);
+  },
+};
+
+/**
  * SelectionModule — computes per-point similarities and neighbor ranking
  * when the caller has provided a selectedIndex.
  */
@@ -102,6 +129,7 @@ const selectionModule: AnalysisModule = {
 const registeredModules: AnalysisModule[] = [
   spectralModule,
   geometryModule,
+  sensitivityModule,  // runs after geometry; needs datasetX + kernelFunc in input
   selectionModule,
 ];
 
