@@ -25,6 +25,14 @@ export interface SensitivityMetrics {
   perPointSensitivity: number[];
 }
 
+export interface ClassificationMetrics {
+  trainingAccuracy: number;
+  supportVectorCount: number;
+  supportVectorIndices: number[];
+  marginEstimate: number;
+  interpretation: string;
+}
+
 export interface AnalysisResult {
   spectrum: number[];
   embedding: number[][];
@@ -35,6 +43,7 @@ export interface AnalysisResult {
   };
   interpretation: string;
   sensitivity?: SensitivityMetrics;
+  classification?: ClassificationMetrics;
 }
 
 export interface KernelComputationResult {

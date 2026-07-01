@@ -63,6 +63,7 @@ class KernelEngine {
       const pipelineOutput = runAnalysisPipeline({
         matrix: K,
         datasetX: dataset.X,
+        datasetY: dataset.y,
         kernelFunc,
       });
       result.analysis = pipelineOutput.analysis;

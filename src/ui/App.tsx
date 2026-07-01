@@ -7,6 +7,7 @@ import { SpectrumView } from './components/SpectrumView';
 import { GeometryView } from './components/GeometryView';
 import { SimilarityPanel } from './components/SimilarityPanel';
 import { SensitivityView } from './components/SensitivityView';
+import { DecisionBoundaryView } from './components/DecisionBoundaryView';
 
 import { makeMoons, makeCircles, makeBlobs, makeSpiral } from '../core/datasets';
 import { kernelEngine } from '../core/engine/kernelEngine';
@@ -190,11 +191,26 @@ export default function App() {
         {showAnalysis && analysis?.sensitivity && (
           <SensitivityView sensitivity={analysis.sensitivity} />
         )}
+
+        {showAnalysis && analysis && (
+          <DecisionBoundaryView
+            datasetX={sortedDataset.X}
+            datasetY={sortedDataset.y}
+            analysis={analysis}
+            selection={selection}
+            onPointHover={(i) => handlePointHover(i, 'dataset')}
+            onPointClick={(i) => handlePointClick(i, 'dataset')}
+          />
+        )}
       </div>
 
       {/* ── Similarity Panel ─────────────────────────────────────── */}
       {selectionAnalysis && (
-        <SimilarityPanel analysisSelection={selectionAnalysis} onNeighborClick={handleNeighborClick} />
+        <SimilarityPanel 
+          analysisSelection={selectionAnalysis} 
+          analysis={analysis}
+          onNeighborClick={handleNeighborClick} 
+        />
       )}
     </div>
   );

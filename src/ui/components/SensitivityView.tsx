@@ -1,6 +1,6 @@
 import React from 'react';
 import Plot from 'react-plotly.js';
-import { SensitivityMetrics } from '../../../core/types';
+import { SensitivityMetrics } from '../../core/types';
 
 interface SensitivityViewProps {
   sensitivity: SensitivityMetrics;

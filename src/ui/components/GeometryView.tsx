@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Plot from 'react-plotly.js';
-import { AnalysisResult, AnalysisSelection, Selection } from '../../../core/types';
+import { AnalysisResult, AnalysisSelection, Selection } from '../../core/types';
 
 interface GeometryViewProps {
   originalDatasetX: number[][];

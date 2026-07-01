@@ -2,6 +2,7 @@ import { AnalysisResult, AnalysisSelection, KernelFunction } from '../types';
 import { computeSpectralProperties } from './spectral';
 import { computeKernelPCA } from './geometry';
 import { computeSensitivity } from './sensitivity';
+import { trainKernelClassifier, ClassificationResult } from './classification';
 
 // ---------------------------------------------------------------------------
 // Pipeline input/output types
@@ -13,10 +14,14 @@ export interface KernelPipelineInput {
   /** Optional index of the point the user has selected. */
   selectedIndex?: number;
   /**
-   * Raw dataset points. Required by sensitivity module.
+   * Raw dataset points. Required by sensitivity and classification modules.
    * Other modules ignore this field.
    */
   datasetX?: number[][];
+  /**
+   * Dataset labels. Required by classification module.
+   */
+  datasetY?: number[];
   /**
    * Kernel function used to compute the matrix.
    * Required by sensitivity module for perturbation re-evaluation.
@@ -99,6 +104,32 @@ const sensitivityModule: AnalysisModule = {
 };
 
 /**
+ * ClassificationModule — trains a kernel classifier and computes decision metrics.
+ * Requires input.datasetX, input.datasetY, and input.kernelFunc to be present.
+ * Skips silently if they are absent.
+ */
+const classificationModule: AnalysisModule = {
+  name: 'classification',
+  run(input, output) {
+    if (!output.analysis || !input.datasetX || !input.datasetY || !input.kernelFunc) return;
+    
+    try {
+      const result = trainKernelClassifier(input.datasetX, input.datasetY, input.kernelFunc);
+      
+      output.analysis.classification = {
+        trainingAccuracy: result.trainingAccuracy,
+        supportVectorCount: result.supportVectorCount,
+        supportVectorIndices: result.supportVectorIndices,
+        marginEstimate: result.marginEstimate,
+        interpretation: result.interpretation,
+      };
+    } catch (err) {
+      console.error('[ClassificationModule] Failed:', err);
+    }
+  },
+};
+
+/**
  * SelectionModule — computes per-point similarities and neighbor ranking
  * when the caller has provided a selectedIndex.
  */
@@ -130,6 +161,7 @@ const registeredModules: AnalysisModule[] = [
   spectralModule,
   geometryModule,
   sensitivityModule,  // runs after geometry; needs datasetX + kernelFunc in input
+  classificationModule,  // runs after sensitivity; needs datasetX, datasetY, kernelFunc
   selectionModule,
 ];
 
